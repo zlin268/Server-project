@@ -1,0 +1,24 @@
+Test command:
+
+For balancer:
+python balancer.py http://localhost:port1 http://localhost:port2 http://localhost:port3
+
+（test.txt in server is what I used for performance test ）
+
+The time our setting is one minute
+
+For Client:
+python client.py http://localhost:port/joey.txt
+
+(joey.txt is the file that I use for test client redirection， you can use other file replace it if you want.)
+
+IMPORTANT NOTE:
+I believe the program will work as expect. However, if the program stuck at “connecting to server…” when request from client to server. 
+PLEASE re-test it by re-open server and client. I test on two computers; it never has this problem in first one and it stucks at previous issue in the other one. 
+But reopen it will fix the problem. If re-start does not solve it, Please contact with me before grade it zero☹. I am pretty sure my code will work since I test hundred times.
+email: zlin268@uwo.ca
+
+PS:
+I capture all result after compute in folder test result. I introduce all crucial parts. Please check it if anything confuse you.
+
+Thank you! Have a good day.

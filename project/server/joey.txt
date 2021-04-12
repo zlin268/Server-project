@@ -1,0 +1,1728 @@
+Purpose of the Assignment
+
+The general purpose of this assignment is to continue to explore network programming
+and more advanced concepts by building a simplified web load balancer, leveraging the
+web client and server constructed for Assignment #2 and used again in Assignment
+
+#3. This assignment is designed to give you further experience in:
+
+e writing networked applications
+
+e the socket API in Python
+
+e writing software supporting an Internet protocol
+e techniques for managing network performance
+
+Assigned
+
+Wednesday, November 11, 2020 (please check the main course website regularly for
+any updates or revisions)
+
+Due
+
+The assignment is due Wednesday, December 9th, 2020 by 11:55pm (midnight-ish)
+through an electronic submission through the OWL site. If you require assistance, help is
+available online through OWL.
+
+Late Penalty
+
+Late assignments will be accepted for up to two days after the due date, with weekends
+counting as a single day; the late penalty is 20% of the available marks per day.
+Lateness is based on the time the assignment is submitted.
+
+Individual Effort
+
+Your assignment is expected to be an individual effort. Feel free to discuss ideas with
+others in the class; however, your assignment submission must be your own work. If it is
+determined that you are guilty of cheating on the assignment, you could receive a grade
+of zero with a notice of this offence submitted to the Dean of your home faculty for
+inclusion in your academic record.
+
+What to Hand in
+
+Your assignment submission, as noted above, will be electronically through OWL. You
+are to submit all Python files required for your assignment. If any special instructions
+are required to run your submission, be sure to include a README file documenting
+details. (Keep in mind that if the TA cannot run your assignment, it becomes much
+harder to assign it a grade.)
+
+Assignment Task
+
+You are required to implement in Python a stripped down and simplified web load
+balancer, leveraging the web server and web downloader client you implemented as part
+of Assignment #2 and reused in Assignment #3. Note that you will not need to use your
+web cache from Assignment #3 here, though it should theoretically still work with all of
+this. You can use your own work from Assignment #2 or #3 as a foundation here, or the
+provided sample Assignment #2 solution.
+
+A load balancer can be complex, but we will be making a pretty straightforward
+
+one. Usually, these things work with DNS and other systems to spread incoming
+requests across a pool of servers, but in our case we will be doing this entirely with HTTP
+redirection. (Again, this isn't necessarily the best way of doing things, but itis at least A
+way of doing things using the tools and previous work at our disposal!) In a nutshell,
+your load balancer will sit between your web client and multiple instances of your web
+server. When your client submits a request, it will be sending its request to the load
+balancer, thinking it is the one and only source of the files it is looking for. The load
+balancer will have a list of the actual servers hosting the content, will select a server from
+the list, and respond to the client with a redirection response to inform the client to
+retrieve the file from the given server. On receiving this, the client will connect with the
+designated server and retrieve its file. Periodically, the load balancer will check each
+server to get a measure of their responsiveness and performance, and use this
+information to influence its selection process, directing more client requests to the better
+performing server instances. (In theory, this would be partially influenced by client and
+server location, but this approach should still do the job for us!)
+
+Some Particulars
+
+Here are some specific requirements and other important notes:
+
+e Your web load balancer will be built using elements from the Assignment #2
+client and server programs (or their extended versions from Assignment
+#3). The load balancer primarily needs to act like a web server to clients, but to
+check performance will need to make simple HTTP requests to servers as a web
+client. So, the load balancer will need elements of both the client and server to
+function.
+
+e When launched, the load balancer will be given a list of servers with host and port
+number combinations (in the form of host:port). This can be either provided as
+command line parameters to the load balancer or through a configuration
+file. The list of servers cannot be hardcoded into the load balancer, and your
+balancer should not require a hard coded number of servers either. The listed
+servers should all be running before the load balancer is run. Each server
+should have access to copies of the same files. (In theory, you could just run
+each server from the same directory so they are all serving the same files on your
+file system, or you could replicate the directory structure on your computer and
+run each server from a different replica.)
+
+e Before the load balancer starts accepting traffic from clients, it needs to do a
+performance test on the servers. For this, it will make a simple transfer request
+from each server and time how long it takes to complete each request. The
+transfer could be pretty much anything, so you can create a file of your choosing
+called test’, "test.html", "test.jog" or whatever ... just something that will take
+some time to process. You can use the various methods of the datetime module
+to assist with timing how long it takes from initiating the transfer to when the
+transfer is complete. (Note that if the file is super small, it might be difficult to
+measure how long it takes to transfer on systems with poor timer resolution in
+Python ... here's looking at you, Windows! In such cases, timestamps taken
+before and after the transfer could be identical, with it looking like the transfer
+took no time. You might have to adjust file sizes accordingly if you want to avoid
+this issue. Running at least one server remotely, say on
+cs3357.gaul.csd.uwo.ca should provide some variety in timings at least.)
+
+After running the performance test, your load balancer can rank the servers it
+knows about in terms of their transfer times. The load balancer should use this
+information to direct more clients to the faster servers. How exactly? Well,
+that's up to you. Asimple approach would be to sort the list of servers by speed
+from slowest to fastest. The position in the list indicates the relative share of
+client requests that the server should receive. For example, let's say you have
+three servers A, B, and C with A the slowest, C the fastest, and B somewhere in
+the middle. The load balancer's server list would then be: Ain position 1, Bin
+position 2, and C in position 3 giving a request ratio of 1:2:3. For every request
+the slowest system (A) gets, the fastest system (B) should get three. (And the
+middle system B should get two.) How do you make that happen? Well, if you
+add up these numbers (1, 2, and 3) you have a total of 6. Now, pick a random
+number between 1 and6. Server A (in position 1 of the server list) should only
+get a request if 1 is picked. Server B (in position 2) should get a request if a 2 or
+a3is picked. Server C (in position 3) should get a request ifa4, 5, ora6is
+picked. (So, in other words, the position in the list determines how many
+numbers picked at random would head its way.) This will help maintain the
+proper distribution of requests to servers based on their performance. Again it's
+up to you; as long as you have a means so that every server could get a request
+sent its way and faster servers get more requests on average than slower
+servers, you're good.
+
+Okay. So, now the load balancer has a list of servers and it know how to select
+them to prioritize redirection of client requests to faster servers. The load
+balancer can now start accepting client requests.
+
+When a client issues a request, to use the load balancer, you will specify the
+address of the load balancer in the URL parameter provided to the client. Again,
+to the client, the load balancer is the definitive source of the files it is looking for
+and not the servers. (You could still directly request from a server, but you
+should be always going through the load balancer in this case.). Suppose you
+were looking for a file called foo. html from your server, and had server
+instances running and listening at localhost:11111, localhost: 22222,
+
+and localhost :33333. Also suppose you had your load balancer running and
+listening at localhost :12345. When running your client, you would specify the
+URL to retrieve as http: //localhost :12345/foo. html, making this request
+go to the load balancer. The load balancer would be configured to Know about
+your server instances and would redirect the client accordingly.
+
+When the load balancer receives a request from the client, it will select a target
+server from its server list as discussed above. The load balancer will redirect the
+client to this server by returning a 301 Moved Permanently response to the
+client with a Location: header line specifying the selected target server to
+retrieve the file from. Continuing the above example, if the load balancer chose
+to redirect the client to localhost:11111, it would send along a header line
+ofLocation: http://localhost:11111/foo. html. The load balancer
+will also return a message body containing appropriate HTML, much like how 404
+and other messages are handled by the server. For more information on
+redirections, please see this link.
+
+You will need to modify your client so that when it receives a 301 Moved
+Permanently response to a request, it prints out the message as usual, but
+instead of exiting, it immediately initiates another request to retrieve the file from
+the URL given in the Location: header. It will then download the file and/or
+report errors encountered normally from there. In doing this, the load balancer
+has effectively directed the client to one of your server instances to retrieve the
+file automatically.
+
+What happens if server performance changes over time? The load balancer will
+need to accommodate that and will need to periodically re-run the same
+performance test that it ran on initialization to update its view on which servers
+should be getting more client traffic and which should be getting less. Redoing
+the performance test itself is straightforward enough, but how will the load
+balancer do so if it is constantly waiting for new client requests? One of the
+easiest ways to do this is by setting up a timeout in the load balancer before
+accepting connections on its socket. In such a case, you could define a timeout
+value in a constant in the load balancer, say 5 minutes. After 5 minutes of
+waiting with no client requests, the timeout fires and the load balancer knows to
+run another performance test. When the performance test is complete, it goes
+back to wait for client connections. If none come in before another 5 minutes, it
+times out again and goes and checks on the servers (again). This will make sure
+that the load balancer's view of the servers is pretty up-to-date all the time. (You
+can also use threads to accomplish this, or a number of other mechanisms ... it is
+up to you!)
+
+What happens if one of the server instances is down or unavailable when the
+load balancer checks in on it? In such a case, the load balancer will remove the
+server from its list and stop checking in on it. No clients will be redirected to the
+server from here on. (You'd need to restart the load balancer with a fresh
+configuration to add new server instances.)
+
+If you need additional hosts for multiple servers, you can use
+compute.gaul.csd.uwo.ca and/or cs3357.gaul.csd. uwo.ca as necessary.
+You are to provide all of the Python code for this assignment yourself, except for code
+used from the Assignment #2 implementation provided to you. (You can also reuse your
+own Assignment 32 or #3 code as well.). You are not allowed to use Python functions to
+execute other programs for you, nor are you allowed to use any libraries that provide
+HTTP request handling for you. (If there is a particular library you would like to
+use/import, you must check first.) All server code files must begin with server, all client
+files must begin with client, and all load balancer files must begin with balancer. All of
+these files must be submitted with your assignment.
+
+As an important note, marks will be allocated for code style. This includes appropriate
+use of comments and indentation for readability, plus good naming conventions for
+variables, constants, and functions. Your code should also be well structured (i.e. not all
+in the main function).
+
+Please remember to test your program as well, since marks will obviously be given for
+correctness! You should transfer different HTML documents, as well as images or other
+binary files with your load balancer in front of a number of server instances. You can
+
+then use diff to compare the original files and the downloaded files to ensure the
+correct operation of your client, server, and load balancer.
+Purpose of the Assignment
+
+The general purpose of this assignment is to continue to explore network programming
+and more advanced concepts by building a simplified web load balancer, leveraging the
+web client and server constructed for Assignment #2 and used again in Assignment
+
+#3. This assignment is designed to give you further experience in:
+
+e writing networked applications
+
+e the socket API in Python
+
+e writing software supporting an Internet protocol
+e techniques for managing network performance
+
+Assigned
+
+Wednesday, November 11, 2020 (please check the main course website regularly for
+any updates or revisions)
+
+Due
+
+The assignment is due Wednesday, December 9th, 2020 by 11:55pm (midnight-ish)
+through an electronic submission through the OWL site. If you require assistance, help is
+available online through OWL.
+
+Late Penalty
+
+Late assignments will be accepted for up to two days after the due date, with weekends
+counting as a single day; the late penalty is 20% of the available marks per day.
+Lateness is based on the time the assignment is submitted.
+
+Individual Effort
+
+Your assignment is expected to be an individual effort. Feel free to discuss ideas with
+others in the class; however, your assignment submission must be your own work. If it is
+determined that you are guilty of cheating on the assignment, you could receive a grade
+of zero with a notice of this offence submitted to the Dean of your home faculty for
+inclusion in your academic record.
+
+What to Hand in
+
+Your assignment submission, as noted above, will be electronically through OWL. You
+are to submit all Python files required for your assignment. If any special instructions
+are required to run your submission, be sure to include a README file documenting
+details. (Keep in mind that if the TA cannot run your assignment, it becomes much
+harder to assign it a grade.)
+
+Assignment Task
+
+You are required to implement in Python a stripped down and simplified web load
+balancer, leveraging the web server and web downloader client you implemented as part
+of Assignment #2 and reused in Assignment #3. Note that you will not need to use your
+web cache from Assignment #3 here, though it should theoretically still work with all of
+this. You can use your own work from Assignment #2 or #3 as a foundation here, or the
+provided sample Assignment #2 solution.
+
+A load balancer can be complex, but we will be making a pretty straightforward
+
+one. Usually, these things work with DNS and other systems to spread incoming
+requests across a pool of servers, but in our case we will be doing this entirely with HTTP
+redirection. (Again, this isn't necessarily the best way of doing things, but itis at least A
+way of doing things using the tools and previous work at our disposal!) In a nutshell,
+your load balancer will sit between your web client and multiple instances of your web
+server. When your client submits a request, it will be sending its request to the load
+balancer, thinking it is the one and only source of the files it is looking for. The load
+balancer will have a list of the actual servers hosting the content, will select a server from
+the list, and respond to the client with a redirection response to inform the client to
+retrieve the file from the given server. On receiving this, the client will connect with the
+designated server and retrieve its file. Periodically, the load balancer will check each
+server to get a measure of their responsiveness and performance, and use this
+information to influence its selection process, directing more client requests to the better
+performing server instances. (In theory, this would be partially influenced by client and
+server location, but this approach should still do the job for us!)
+
+Some Particulars
+
+Here are some specific requirements and other important notes:
+
+e Your web load balancer will be built using elements from the Assignment #2
+client and server programs (or their extended versions from Assignment
+#3). The load balancer primarily needs to act like a web server to clients, but to
+check performance will need to make simple HTTP requests to servers as a web
+client. So, the load balancer will need elements of both the client and server to
+function.
+
+e When launched, the load balancer will be given a list of servers with host and port
+number combinations (in the form of host:port). This can be either provided as
+command line parameters to the load balancer or through a configuration
+file. The list of servers cannot be hardcoded into the load balancer, and your
+balancer should not require a hard coded number of servers either. The listed
+servers should all be running before the load balancer is run. Each server
+should have access to copies of the same files. (In theory, you could just run
+each server from the same directory so they are all serving the same files on your
+file system, or you could replicate the directory structure on your computer and
+run each server from a different replica.)
+
+e Before the load balancer starts accepting traffic from clients, it needs to do a
+performance test on the servers. For this, it will make a simple transfer request
+from each server and time how long it takes to complete each request. The
+transfer could be pretty much anything, so you can create a file of your choosing
+called test’, "test.html", "test.jog" or whatever ... just something that will take
+some time to process. You can use the various methods of the datetime module
+to assist with timing how long it takes from initiating the transfer to when the
+transfer is complete. (Note that if the file is super small, it might be difficult to
+measure how long it takes to transfer on systems with poor timer resolution in
+Python ... here's looking at you, Windows! In such cases, timestamps taken
+before and after the transfer could be identical, with it looking like the transfer
+took no time. You might have to adjust file sizes accordingly if you want to avoid
+this issue. Running at least one server remotely, say on
+cs3357.gaul.csd.uwo.ca should provide some variety in timings at least.)
+
+After running the performance test, your load balancer can rank the servers it
+knows about in terms of their transfer times. The load balancer should use this
+information to direct more clients to the faster servers. How exactly? Well,
+that's up to you. Asimple approach would be to sort the list of servers by speed
+from slowest to fastest. The position in the list indicates the relative share of
+client requests that the server should receive. For example, let's say you have
+three servers A, B, and C with A the slowest, C the fastest, and B somewhere in
+the middle. The load balancer's server list would then be: Ain position 1, Bin
+position 2, and C in position 3 giving a request ratio of 1:2:3. For every request
+the slowest system (A) gets, the fastest system (B) should get three. (And the
+middle system B should get two.) How do you make that happen? Well, if you
+add up these numbers (1, 2, and 3) you have a total of 6. Now, pick a random
+number between 1 and6. Server A (in position 1 of the server list) should only
+get a request if 1 is picked. Server B (in position 2) should get a request if a 2 or
+a3is picked. Server C (in position 3) should get a request ifa4, 5, ora6is
+picked. (So, in other words, the position in the list determines how many
+numbers picked at random would head its way.) This will help maintain the
+proper distribution of requests to servers based on their performance. Again it's
+up to you; as long as you have a means so that every server could get a request
+sent its way and faster servers get more requests on average than slower
+servers, you're good.
+
+Okay. So, now the load balancer has a list of servers and it know how to select
+them to prioritize redirection of client requests to faster servers. The load
+balancer can now start accepting client requests.
+
+When a client issues a request, to use the load balancer, you will specify the
+address of the load balancer in the URL parameter provided to the client. Again,
+to the client, the load balancer is the definitive source of the files it is looking for
+and not the servers. (You could still directly request from a server, but you
+should be always going through the load balancer in this case.). Suppose you
+were looking for a file called foo. html from your server, and had server
+instances running and listening at localhost:11111, localhost: 22222,
+
+and localhost :33333. Also suppose you had your load balancer running and
+listening at localhost :12345. When running your client, you would specify the
+URL to retrieve as http: //localhost :12345/foo. html, making this request
+go to the load balancer. The load balancer would be configured to Know about
+your server instances and would redirect the client accordingly.
+
+When the load balancer receives a request from the client, it will select a target
+server from its server list as discussed above. The load balancer will redirect the
+client to this server by returning a 301 Moved Permanently response to the
+client with a Location: header line specifying the selected target server to
+retrieve the file from. Continuing the above example, if the load balancer chose
+to redirect the client to localhost:11111, it would send along a header line
+ofLocation: http://localhost:11111/foo. html. The load balancer
+will also return a message body containing appropriate HTML, much like how 404
+and other messages are handled by the server. For more information on
+redirections, please see this link.
+
+You will need to modify your client so that when it receives a 301 Moved
+Permanently response to a request, it prints out the message as usual, but
+instead of exiting, it immediately initiates another request to retrieve the file from
+the URL given in the Location: header. It will then download the file and/or
+report errors encountered normally from there. In doing this, the load balancer
+has effectively directed the client to one of your server instances to retrieve the
+file automatically.
+
+What happens if server performance changes over time? The load balancer will
+need to accommodate that and will need to periodically re-run the same
+performance test that it ran on initialization to update its view on which servers
+should be getting more client traffic and which should be getting less. Redoing
+the performance test itself is straightforward enough, but how will the load
+balancer do so if it is constantly waiting for new client requests? One of the
+easiest ways to do this is by setting up a timeout in the load balancer before
+accepting connections on its socket. In such a case, you could define a timeout
+value in a constant in the load balancer, say 5 minutes. After 5 minutes of
+waiting with no client requests, the timeout fires and the load balancer knows to
+run another performance test. When the performance test is complete, it goes
+back to wait for client connections. If none come in before another 5 minutes, it
+times out again and goes and checks on the servers (again). This will make sure
+that the load balancer's view of the servers is pretty up-to-date all the time. (You
+can also use threads to accomplish this, or a number of other mechanisms ... it is
+up to you!)
+
+What happens if one of the server instances is down or unavailable when the
+load balancer checks in on it? In such a case, the load balancer will remove the
+server from its list and stop checking in on it. No clients will be redirected to the
+server from here on. (You'd need to restart the load balancer with a fresh
+configuration to add new server instances.)
+
+If you need additional hosts for multiple servers, you can use
+compute.gaul.csd.uwo.ca and/or cs3357.gaul.csd. uwo.ca as necessary.
+You are to provide all of the Python code for this assignment yourself, except for code
+used from the Assignment #2 implementation provided to you. (You can also reuse your
+own Assignment 32 or #3 code as well.). You are not allowed to use Python functions to
+execute other programs for you, nor are you allowed to use any libraries that provide
+HTTP request handling for you. (If there is a particular library you would like to
+use/import, you must check first.) All server code files must begin with server, all client
+files must begin with client, and all load balancer files must begin with balancer. All of
+these files must be submitted with your assignment.
+
+As an important note, marks will be allocated for code style. This includes appropriate
+use of comments and indentation for readability, plus good naming conventions for
+variables, constants, and functions. Your code should also be well structured (i.e. not all
+in the main function).
+
+Please remember to test your program as well, since marks will obviously be given for
+correctness! You should transfer different HTML documents, as well as images or other
+binary files with your load balancer in front of a number of server instances. You can
+
+then use diff to compare the original files and the downloaded files to ensure the
+correct operation of your client, server, and load balancer.
+Purpose of the Assignment
+
+The general purpose of this assignment is to continue to explore network programming
+and more advanced concepts by building a simplified web load balancer, leveraging the
+web client and server constructed for Assignment #2 and used again in Assignment
+
+#3. This assignment is designed to give you further experience in:
+
+e writing networked applications
+
+e the socket API in Python
+
+e writing software supporting an Internet protocol
+e techniques for managing network performance
+
+Assigned
+
+Wednesday, November 11, 2020 (please check the main course website regularly for
+any updates or revisions)
+
+Due
+
+The assignment is due Wednesday, December 9th, 2020 by 11:55pm (midnight-ish)
+through an electronic submission through the OWL site. If you require assistance, help is
+available online through OWL.
+
+Late Penalty
+
+Late assignments will be accepted for up to two days after the due date, with weekends
+counting as a single day; the late penalty is 20% of the available marks per day.
+Lateness is based on the time the assignment is submitted.
+
+Individual Effort
+
+Your assignment is expected to be an individual effort. Feel free to discuss ideas with
+others in the class; however, your assignment submission must be your own work. If it is
+determined that you are guilty of cheating on the assignment, you could receive a grade
+of zero with a notice of this offence submitted to the Dean of your home faculty for
+inclusion in your academic record.
+
+What to Hand in
+
+Your assignment submission, as noted above, will be electronically through OWL. You
+are to submit all Python files required for your assignment. If any special instructions
+are required to run your submission, be sure to include a README file documenting
+details. (Keep in mind that if the TA cannot run your assignment, it becomes much
+harder to assign it a grade.)
+
+Assignment Task
+
+You are required to implement in Python a stripped down and simplified web load
+balancer, leveraging the web server and web downloader client you implemented as part
+of Assignment #2 and reused in Assignment #3. Note that you will not need to use your
+web cache from Assignment #3 here, though it should theoretically still work with all of
+this. You can use your own work from Assignment #2 or #3 as a foundation here, or the
+provided sample Assignment #2 solution.
+
+A load balancer can be complex, but we will be making a pretty straightforward
+
+one. Usually, these things work with DNS and other systems to spread incoming
+requests across a pool of servers, but in our case we will be doing this entirely with HTTP
+redirection. (Again, this isn't necessarily the best way of doing things, but itis at least A
+way of doing things using the tools and previous work at our disposal!) In a nutshell,
+your load balancer will sit between your web client and multiple instances of your web
+server. When your client submits a request, it will be sending its request to the load
+balancer, thinking it is the one and only source of the files it is looking for. The load
+balancer will have a list of the actual servers hosting the content, will select a server from
+the list, and respond to the client with a redirection response to inform the client to
+retrieve the file from the given server. On receiving this, the client will connect with the
+designated server and retrieve its file. Periodically, the load balancer will check each
+server to get a measure of their responsiveness and performance, and use this
+information to influence its selection process, directing more client requests to the better
+performing server instances. (In theory, this would be partially influenced by client and
+server location, but this approach should still do the job for us!)
+
+Some Particulars
+
+Here are some specific requirements and other important notes:
+
+e Your web load balancer will be built using elements from the Assignment #2
+client and server programs (or their extended versions from Assignment
+#3). The load balancer primarily needs to act like a web server to clients, but to
+check performance will need to make simple HTTP requests to servers as a web
+client. So, the load balancer will need elements of both the client and server to
+function.
+
+e When launched, the load balancer will be given a list of servers with host and port
+number combinations (in the form of host:port). This can be either provided as
+command line parameters to the load balancer or through a configuration
+file. The list of servers cannot be hardcoded into the load balancer, and your
+balancer should not require a hard coded number of servers either. The listed
+servers should all be running before the load balancer is run. Each server
+should have access to copies of the same files. (In theory, you could just run
+each server from the same directory so they are all serving the same files on your
+file system, or you could replicate the directory structure on your computer and
+run each server from a different replica.)
+
+e Before the load balancer starts accepting traffic from clients, it needs to do a
+performance test on the servers. For this, it will make a simple transfer request
+from each server and time how long it takes to complete each request. The
+transfer could be pretty much anything, so you can create a file of your choosing
+called test’, "test.html", "test.jog" or whatever ... just something that will take
+some time to process. You can use the various methods of the datetime module
+to assist with timing how long it takes from initiating the transfer to when the
+transfer is complete. (Note that if the file is super small, it might be difficult to
+measure how long it takes to transfer on systems with poor timer resolution in
+Python ... here's looking at you, Windows! In such cases, timestamps taken
+before and after the transfer could be identical, with it looking like the transfer
+took no time. You might have to adjust file sizes accordingly if you want to avoid
+this issue. Running at least one server remotely, say on
+cs3357.gaul.csd.uwo.ca should provide some variety in timings at least.)
+
+After running the performance test, your load balancer can rank the servers it
+knows about in terms of their transfer times. The load balancer should use this
+information to direct more clients to the faster servers. How exactly? Well,
+that's up to you. Asimple approach would be to sort the list of servers by speed
+from slowest to fastest. The position in the list indicates the relative share of
+client requests that the server should receive. For example, let's say you have
+three servers A, B, and C with A the slowest, C the fastest, and B somewhere in
+the middle. The load balancer's server list would then be: Ain position 1, Bin
+position 2, and C in position 3 giving a request ratio of 1:2:3. For every request
+the slowest system (A) gets, the fastest system (B) should get three. (And the
+middle system B should get two.) How do you make that happen? Well, if you
+add up these numbers (1, 2, and 3) you have a total of 6. Now, pick a random
+number between 1 and6. Server A (in position 1 of the server list) should only
+get a request if 1 is picked. Server B (in position 2) should get a request if a 2 or
+a3is picked. Server C (in position 3) should get a request ifa4, 5, ora6is
+picked. (So, in other words, the position in the list determines how many
+numbers picked at random would head its way.) This will help maintain the
+proper distribution of requests to servers based on their performance. Again it's
+up to you; as long as you have a means so that every server could get a request
+sent its way and faster servers get more requests on average than slower
+servers, you're good.
+
+Okay. So, now the load balancer has a list of servers and it know how to select
+them to prioritize redirection of client requests to faster servers. The load
+balancer can now start accepting client requests.
+
+When a client issues a request, to use the load balancer, you will specify the
+address of the load balancer in the URL parameter provided to the client. Again,
+to the client, the load balancer is the definitive source of the files it is looking for
+and not the servers. (You could still directly request from a server, but you
+should be always going through the load balancer in this case.). Suppose you
+were looking for a file called foo. html from your server, and had server
+instances running and listening at localhost:11111, localhost: 22222,
+
+and localhost :33333. Also suppose you had your load balancer running and
+listening at localhost :12345. When running your client, you would specify the
+URL to retrieve as http: //localhost :12345/foo. html, making this request
+go to the load balancer. The load balancer would be configured to Know about
+your server instances and would redirect the client accordingly.
+
+When the load balancer receives a request from the client, it will select a target
+server from its server list as discussed above. The load balancer will redirect the
+client to this server by returning a 301 Moved Permanently response to the
+client with a Location: header line specifying the selected target server to
+retrieve the file from. Continuing the above example, if the load balancer chose
+to redirect the client to localhost:11111, it would send along a header line
+ofLocation: http://localhost:11111/foo. html. The load balancer
+will also return a message body containing appropriate HTML, much like how 404
+and other messages are handled by the server. For more information on
+redirections, please see this link.
+
+You will need to modify your client so that when it receives a 301 Moved
+Permanently response to a request, it prints out the message as usual, but
+instead of exiting, it immediately initiates another request to retrieve the file from
+the URL given in the Location: header. It will then download the file and/or
+report errors encountered normally from there. In doing this, the load balancer
+has effectively directed the client to one of your server instances to retrieve the
+file automatically.
+
+What happens if server performance changes over time? The load balancer will
+need to accommodate that and will need to periodically re-run the same
+performance test that it ran on initialization to update its view on which servers
+should be getting more client traffic and which should be getting less. Redoing
+the performance test itself is straightforward enough, but how will the load
+balancer do so if it is constantly waiting for new client requests? One of the
+easiest ways to do this is by setting up a timeout in the load balancer before
+accepting connections on its socket. In such a case, you could define a timeout
+value in a constant in the load balancer, say 5 minutes. After 5 minutes of
+waiting with no client requests, the timeout fires and the load balancer knows to
+run another performance test. When the performance test is complete, it goes
+back to wait for client connections. If none come in before another 5 minutes, it
+times out again and goes and checks on the servers (again). This will make sure
+that the load balancer's view of the servers is pretty up-to-date all the time. (You
+can also use threads to accomplish this, or a number of other mechanisms ... it is
+up to you!)
+
+What happens if one of the server instances is down or unavailable when the
+load balancer checks in on it? In such a case, the load balancer will remove the
+server from its list and stop checking in on it. No clients will be redirected to the
+server from here on. (You'd need to restart the load balancer with a fresh
+configuration to add new server instances.)
+
+If you need additional hosts for multiple servers, you can use
+compute.gaul.csd.uwo.ca and/or cs3357.gaul.csd. uwo.ca as necessary.
+You are to provide all of the Python code for this assignment yourself, except for code
+used from the Assignment #2 implementation provided to you. (You can also reuse your
+own Assignment 32 or #3 code as well.). You are not allowed to use Python functions to
+execute other programs for you, nor are you allowed to use any libraries that provide
+HTTP request handling for you. (If there is a particular library you would like to
+use/import, you must check first.) All server code files must begin with server, all client
+files must begin with client, and all load balancer files must begin with balancer. All of
+these files must be submitted with your assignment.
+
+As an important note, marks will be allocated for code style. This includes appropriate
+use of comments and indentation for readability, plus good naming conventions for
+variables, constants, and functions. Your code should also be well structured (i.e. not all
+in the main function).
+
+Please remember to test your program as well, since marks will obviously be given for
+correctness! You should transfer different HTML documents, as well as images or other
+binary files with your load balancer in front of a number of server instances. You can
+
+then use diff to compare the original files and the downloaded files to ensure the
+correct operation of your client, server, and load balancer.
+Purpose of the Assignment
+
+The general purpose of this assignment is to continue to explore network programming
+and more advanced concepts by building a simplified web load balancer, leveraging the
+web client and server constructed for Assignment #2 and used again in Assignment
+
+#3. This assignment is designed to give you further experience in:
+
+e writing networked applications
+
+e the socket API in Python
+
+e writing software supporting an Internet protocol
+e techniques for managing network performance
+
+Assigned
+
+Wednesday, November 11, 2020 (please check the main course website regularly for
+any updates or revisions)
+
+Due
+
+The assignment is due Wednesday, December 9th, 2020 by 11:55pm (midnight-ish)
+through an electronic submission through the OWL site. If you require assistance, help is
+available online through OWL.
+
+Late Penalty
+
+Late assignments will be accepted for up to two days after the due date, with weekends
+counting as a single day; the late penalty is 20% of the available marks per day.
+Lateness is based on the time the assignment is submitted.
+
+Individual Effort
+
+Your assignment is expected to be an individual effort. Feel free to discuss ideas with
+others in the class; however, your assignment submission must be your own work. If it is
+determined that you are guilty of cheating on the assignment, you could receive a grade
+of zero with a notice of this offence submitted to the Dean of your home faculty for
+inclusion in your academic record.
+
+What to Hand in
+
+Your assignment submission, as noted above, will be electronically through OWL. You
+are to submit all Python files required for your assignment. If any special instructions
+are required to run your submission, be sure to include a README file documenting
+details. (Keep in mind that if the TA cannot run your assignment, it becomes much
+harder to assign it a grade.)
+
+Assignment Task
+
+You are required to implement in Python a stripped down and simplified web load
+balancer, leveraging the web server and web downloader client you implemented as part
+of Assignment #2 and reused in Assignment #3. Note that you will not need to use your
+web cache from Assignment #3 here, though it should theoretically still work with all of
+this. You can use your own work from Assignment #2 or #3 as a foundation here, or the
+provided sample Assignment #2 solution.
+
+A load balancer can be complex, but we will be making a pretty straightforward
+
+one. Usually, these things work with DNS and other systems to spread incoming
+requests across a pool of servers, but in our case we will be doing this entirely with HTTP
+redirection. (Again, this isn't necessarily the best way of doing things, but itis at least A
+way of doing things using the tools and previous work at our disposal!) In a nutshell,
+your load balancer will sit between your web client and multiple instances of your web
+server. When your client submits a request, it will be sending its request to the load
+balancer, thinking it is the one and only source of the files it is looking for. The load
+balancer will have a list of the actual servers hosting the content, will select a server from
+the list, and respond to the client with a redirection response to inform the client to
+retrieve the file from the given server. On receiving this, the client will connect with the
+designated server and retrieve its file. Periodically, the load balancer will check each
+server to get a measure of their responsiveness and performance, and use this
+information to influence its selection process, directing more client requests to the better
+performing server instances. (In theory, this would be partially influenced by client and
+server location, but this approach should still do the job for us!)
+
+Some Particulars
+
+Here are some specific requirements and other important notes:
+
+e Your web load balancer will be built using elements from the Assignment #2
+client and server programs (or their extended versions from Assignment
+#3). The load balancer primarily needs to act like a web server to clients, but to
+check performance will need to make simple HTTP requests to servers as a web
+client. So, the load balancer will need elements of both the client and server to
+function.
+
+e When launched, the load balancer will be given a list of servers with host and port
+number combinations (in the form of host:port). This can be either provided as
+command line parameters to the load balancer or through a configuration
+file. The list of servers cannot be hardcoded into the load balancer, and your
+balancer should not require a hard coded number of servers either. The listed
+servers should all be running before the load balancer is run. Each server
+should have access to copies of the same files. (In theory, you could just run
+each server from the same directory so they are all serving the same files on your
+file system, or you could replicate the directory structure on your computer and
+run each server from a different replica.)
+
+e Before the load balancer starts accepting traffic from clients, it needs to do a
+performance test on the servers. For this, it will make a simple transfer request
+from each server and time how long it takes to complete each request. The
+transfer could be pretty much anything, so you can create a file of your choosing
+called test’, "test.html", "test.jog" or whatever ... just something that will take
+some time to process. You can use the various methods of the datetime module
+to assist with timing how long it takes from initiating the transfer to when the
+transfer is complete. (Note that if the file is super small, it might be difficult to
+measure how long it takes to transfer on systems with poor timer resolution in
+Python ... here's looking at you, Windows! In such cases, timestamps taken
+before and after the transfer could be identical, with it looking like the transfer
+took no time. You might have to adjust file sizes accordingly if you want to avoid
+this issue. Running at least one server remotely, say on
+cs3357.gaul.csd.uwo.ca should provide some variety in timings at least.)
+
+After running the performance test, your load balancer can rank the servers it
+knows about in terms of their transfer times. The load balancer should use this
+information to direct more clients to the faster servers. How exactly? Well,
+that's up to you. Asimple approach would be to sort the list of servers by speed
+from slowest to fastest. The position in the list indicates the relative share of
+client requests that the server should receive. For example, let's say you have
+three servers A, B, and C with A the slowest, C the fastest, and B somewhere in
+the middle. The load balancer's server list would then be: Ain position 1, Bin
+position 2, and C in position 3 giving a request ratio of 1:2:3. For every request
+the slowest system (A) gets, the fastest system (B) should get three. (And the
+middle system B should get two.) How do you make that happen? Well, if you
+add up these numbers (1, 2, and 3) you have a total of 6. Now, pick a random
+number between 1 and6. Server A (in position 1 of the server list) should only
+get a request if 1 is picked. Server B (in position 2) should get a request if a 2 or
+a3is picked. Server C (in position 3) should get a request ifa4, 5, ora6is
+picked. (So, in other words, the position in the list determines how many
+numbers picked at random would head its way.) This will help maintain the
+proper distribution of requests to servers based on their performance. Again it's
+up to you; as long as you have a means so that every server could get a request
+sent its way and faster servers get more requests on average than slower
+servers, you're good.
+
+Okay. So, now the load balancer has a list of servers and it know how to select
+them to prioritize redirection of client requests to faster servers. The load
+balancer can now start accepting client requests.
+
+When a client issues a request, to use the load balancer, you will specify the
+address of the load balancer in the URL parameter provided to the client. Again,
+to the client, the load balancer is the definitive source of the files it is looking for
+and not the servers. (You could still directly request from a server, but you
+should be always going through the load balancer in this case.). Suppose you
+were looking for a file called foo. html from your server, and had server
+instances running and listening at localhost:11111, localhost: 22222,
+
+and localhost :33333. Also suppose you had your load balancer running and
+listening at localhost :12345. When running your client, you would specify the
+URL to retrieve as http: //localhost :12345/foo. html, making this request
+go to the load balancer. The load balancer would be configured to Know about
+your server instances and would redirect the client accordingly.
+
+When the load balancer receives a request from the client, it will select a target
+server from its server list as discussed above. The load balancer will redirect the
+client to this server by returning a 301 Moved Permanently response to the
+client with a Location: header line specifying the selected target server to
+retrieve the file from. Continuing the above example, if the load balancer chose
+to redirect the client to localhost:11111, it would send along a header line
+ofLocation: http://localhost:11111/foo. html. The load balancer
+will also return a message body containing appropriate HTML, much like how 404
+and other messages are handled by the server. For more information on
+redirections, please see this link.
+
+You will need to modify your client so that when it receives a 301 Moved
+Permanently response to a request, it prints out the message as usual, but
+instead of exiting, it immediately initiates another request to retrieve the file from
+the URL given in the Location: header. It will then download the file and/or
+report errors encountered normally from there. In doing this, the load balancer
+has effectively directed the client to one of your server instances to retrieve the
+file automatically.
+
+What happens if server performance changes over time? The load balancer will
+need to accommodate that and will need to periodically re-run the same
+performance test that it ran on initialization to update its view on which servers
+should be getting more client traffic and which should be getting less. Redoing
+the performance test itself is straightforward enough, but how will the load
+balancer do so if it is constantly waiting for new client requests? One of the
+easiest ways to do this is by setting up a timeout in the load balancer before
+accepting connections on its socket. In such a case, you could define a timeout
+value in a constant in the load balancer, say 5 minutes. After 5 minutes of
+waiting with no client requests, the timeout fires and the load balancer knows to
+run another performance test. When the performance test is complete, it goes
+back to wait for client connections. If none come in before another 5 minutes, it
+times out again and goes and checks on the servers (again). This will make sure
+that the load balancer's view of the servers is pretty up-to-date all the time. (You
+can also use threads to accomplish this, or a number of other mechanisms ... it is
+up to you!)
+
+What happens if one of the server instances is down or unavailable when the
+load balancer checks in on it? In such a case, the load balancer will remove the
+server from its list and stop checking in on it. No clients will be redirected to the
+server from here on. (You'd need to restart the load balancer with a fresh
+configuration to add new server instances.)
+
+If you need additional hosts for multiple servers, you can use
+compute.gaul.csd.uwo.ca and/or cs3357.gaul.csd. uwo.ca as necessary.
+You are to provide all of the Python code for this assignment yourself, except for code
+used from the Assignment #2 implementation provided to you. (You can also reuse your
+own Assignment 32 or #3 code as well.). You are not allowed to use Python functions to
+execute other programs for you, nor are you allowed to use any libraries that provide
+HTTP request handling for you. (If there is a particular library you would like to
+use/import, you must check first.) All server code files must begin with server, all client
+files must begin with client, and all load balancer files must begin with balancer. All of
+these files must be submitted with your assignment.
+
+As an important note, marks will be allocated for code style. This includes appropriate
+use of comments and indentation for readability, plus good naming conventions for
+variables, constants, and functions. Your code should also be well structured (i.e. not all
+in the main function).
+
+Please remember to test your program as well, since marks will obviously be given for
+correctness! You should transfer different HTML documents, as well as images or other
+binary files with your load balancer in front of a number of server instances. You can
+
+then use diff to compare the original files and the downloaded files to ensure the
+correct operation of your client, server, and load balancer.
+Purpose of the Assignment
+
+The general purpose of this assignment is to continue to explore network programming
+and more advanced concepts by building a simplified web load balancer, leveraging the
+web client and server constructed for Assignment #2 and used again in Assignment
+
+#3. This assignment is designed to give you further experience in:
+
+e writing networked applications
+
+e the socket API in Python
+
+e writing software supporting an Internet protocol
+e techniques for managing network performance
+
+Assigned
+
+Wednesday, November 11, 2020 (please check the main course website regularly for
+any updates or revisions)
+
+Due
+
+The assignment is due Wednesday, December 9th, 2020 by 11:55pm (midnight-ish)
+through an electronic submission through the OWL site. If you require assistance, help is
+available online through OWL.
+
+Late Penalty
+
+Late assignments will be accepted for up to two days after the due date, with weekends
+counting as a single day; the late penalty is 20% of the available marks per day.
+Lateness is based on the time the assignment is submitted.
+
+Individual Effort
+
+Your assignment is expected to be an individual effort. Feel free to discuss ideas with
+others in the class; however, your assignment submission must be your own work. If it is
+determined that you are guilty of cheating on the assignment, you could receive a grade
+of zero with a notice of this offence submitted to the Dean of your home faculty for
+inclusion in your academic record.
+
+What to Hand in
+
+Your assignment submission, as noted above, will be electronically through OWL. You
+are to submit all Python files required for your assignment. If any special instructions
+are required to run your submission, be sure to include a README file documenting
+details. (Keep in mind that if the TA cannot run your assignment, it becomes much
+harder to assign it a grade.)
+
+Assignment Task
+
+You are required to implement in Python a stripped down and simplified web load
+balancer, leveraging the web server and web downloader client you implemented as part
+of Assignment #2 and reused in Assignment #3. Note that you will not need to use your
+web cache from Assignment #3 here, though it should theoretically still work with all of
+this. You can use your own work from Assignment #2 or #3 as a foundation here, or the
+provided sample Assignment #2 solution.
+
+A load balancer can be complex, but we will be making a pretty straightforward
+
+one. Usually, these things work with DNS and other systems to spread incoming
+requests across a pool of servers, but in our case we will be doing this entirely with HTTP
+redirection. (Again, this isn't necessarily the best way of doing things, but itis at least A
+way of doing things using the tools and previous work at our disposal!) In a nutshell,
+your load balancer will sit between your web client and multiple instances of your web
+server. When your client submits a request, it will be sending its request to the load
+balancer, thinking it is the one and only source of the files it is looking for. The load
+balancer will have a list of the actual servers hosting the content, will select a server from
+the list, and respond to the client with a redirection response to inform the client to
+retrieve the file from the given server. On receiving this, the client will connect with the
+designated server and retrieve its file. Periodically, the load balancer will check each
+server to get a measure of their responsiveness and performance, and use this
+information to influence its selection process, directing more client requests to the better
+performing server instances. (In theory, this would be partially influenced by client and
+server location, but this approach should still do the job for us!)
+
+Some Particulars
+
+Here are some specific requirements and other important notes:
+
+e Your web load balancer will be built using elements from the Assignment #2
+client and server programs (or their extended versions from Assignment
+#3). The load balancer primarily needs to act like a web server to clients, but to
+check performance will need to make simple HTTP requests to servers as a web
+client. So, the load balancer will need elements of both the client and server to
+function.
+
+e When launched, the load balancer will be given a list of servers with host and port
+number combinations (in the form of host:port). This can be either provided as
+command line parameters to the load balancer or through a configuration
+file. The list of servers cannot be hardcoded into the load balancer, and your
+balancer should not require a hard coded number of servers either. The listed
+servers should all be running before the load balancer is run. Each server
+should have access to copies of the same files. (In theory, you could just run
+each server from the same directory so they are all serving the same files on your
+file system, or you could replicate the directory structure on your computer and
+run each server from a different replica.)
+
+e Before the load balancer starts accepting traffic from clients, it needs to do a
+performance test on the servers. For this, it will make a simple transfer request
+from each server and time how long it takes to complete each request. The
+transfer could be pretty much anything, so you can create a file of your choosing
+called test’, "test.html", "test.jog" or whatever ... just something that will take
+some time to process. You can use the various methods of the datetime module
+to assist with timing how long it takes from initiating the transfer to when the
+transfer is complete. (Note that if the file is super small, it might be difficult to
+measure how long it takes to transfer on systems with poor timer resolution in
+Python ... here's looking at you, Windows! In such cases, timestamps taken
+before and after the transfer could be identical, with it looking like the transfer
+took no time. You might have to adjust file sizes accordingly if you want to avoid
+this issue. Running at least one server remotely, say on
+cs3357.gaul.csd.uwo.ca should provide some variety in timings at least.)
+
+After running the performance test, your load balancer can rank the servers it
+knows about in terms of their transfer times. The load balancer should use this
+information to direct more clients to the faster servers. How exactly? Well,
+that's up to you. Asimple approach would be to sort the list of servers by speed
+from slowest to fastest. The position in the list indicates the relative share of
+client requests that the server should receive. For example, let's say you have
+three servers A, B, and C with A the slowest, C the fastest, and B somewhere in
+the middle. The load balancer's server list would then be: Ain position 1, Bin
+position 2, and C in position 3 giving a request ratio of 1:2:3. For every request
+the slowest system (A) gets, the fastest system (B) should get three. (And the
+middle system B should get two.) How do you make that happen? Well, if you
+add up these numbers (1, 2, and 3) you have a total of 6. Now, pick a random
+number between 1 and6. Server A (in position 1 of the server list) should only
+get a request if 1 is picked. Server B (in position 2) should get a request if a 2 or
+a3is picked. Server C (in position 3) should get a request ifa4, 5, ora6is
+picked. (So, in other words, the position in the list determines how many
+numbers picked at random would head its way.) This will help maintain the
+proper distribution of requests to servers based on their performance. Again it's
+up to you; as long as you have a means so that every server could get a request
+sent its way and faster servers get more requests on average than slower
+servers, you're good.
+
+Okay. So, now the load balancer has a list of servers and it know how to select
+them to prioritize redirection of client requests to faster servers. The load
+balancer can now start accepting client requests.
+
+When a client issues a request, to use the load balancer, you will specify the
+address of the load balancer in the URL parameter provided to the client. Again,
+to the client, the load balancer is the definitive source of the files it is looking for
+and not the servers. (You could still directly request from a server, but you
+should be always going through the load balancer in this case.). Suppose you
+were looking for a file called foo. html from your server, and had server
+instances running and listening at localhost:11111, localhost: 22222,
+
+and localhost :33333. Also suppose you had your load balancer running and
+listening at localhost :12345. When running your client, you would specify the
+URL to retrieve as http: //localhost :12345/foo. html, making this request
+go to the load balancer. The load balancer would be configured to Know about
+your server instances and would redirect the client accordingly.
+
+When the load balancer receives a request from the client, it will select a target
+server from its server list as discussed above. The load balancer will redirect the
+client to this server by returning a 301 Moved Permanently response to the
+client with a Location: header line specifying the selected target server to
+retrieve the file from. Continuing the above example, if the load balancer chose
+to redirect the client to localhost:11111, it would send along a header line
+ofLocation: http://localhost:11111/foo. html. The load balancer
+will also return a message body containing appropriate HTML, much like how 404
+and other messages are handled by the server. For more information on
+redirections, please see this link.
+
+You will need to modify your client so that when it receives a 301 Moved
+Permanently response to a request, it prints out the message as usual, but
+instead of exiting, it immediately initiates another request to retrieve the file from
+the URL given in the Location: header. It will then download the file and/or
+report errors encountered normally from there. In doing this, the load balancer
+has effectively directed the client to one of your server instances to retrieve the
+file automatically.
+
+What happens if server performance changes over time? The load balancer will
+need to accommodate that and will need to periodically re-run the same
+performance test that it ran on initialization to update its view on which servers
+should be getting more client traffic and which should be getting less. Redoing
+the performance test itself is straightforward enough, but how will the load
+balancer do so if it is constantly waiting for new client requests? One of the
+easiest ways to do this is by setting up a timeout in the load balancer before
+accepting connections on its socket. In such a case, you could define a timeout
+value in a constant in the load balancer, say 5 minutes. After 5 minutes of
+waiting with no client requests, the timeout fires and the load balancer knows to
+run another performance test. When the performance test is complete, it goes
+back to wait for client connections. If none come in before another 5 minutes, it
+times out again and goes and checks on the servers (again). This will make sure
+that the load balancer's view of the servers is pretty up-to-date all the time. (You
+can also use threads to accomplish this, or a number of other mechanisms ... it is
+up to you!)
+
+What happens if one of the server instances is down or unavailable when the
+load balancer checks in on it? In such a case, the load balancer will remove the
+server from its list and stop checking in on it. No clients will be redirected to the
+server from here on. (You'd need to restart the load balancer with a fresh
+configuration to add new server instances.)
+
+If you need additional hosts for multiple servers, you can use
+compute.gaul.csd.uwo.ca and/or cs3357.gaul.csd. uwo.ca as necessary.
+You are to provide all of the Python code for this assignment yourself, except for code
+used from the Assignment #2 implementation provided to you. (You can also reuse your
+own Assignment 32 or #3 code as well.). You are not allowed to use Python functions to
+execute other programs for you, nor are you allowed to use any libraries that provide
+HTTP request handling for you. (If there is a particular library you would like to
+use/import, you must check first.) All server code files must begin with server, all client
+files must begin with client, and all load balancer files must begin with balancer. All of
+these files must be submitted with your assignment.
+
+As an important note, marks will be allocated for code style. This includes appropriate
+use of comments and indentation for readability, plus good naming conventions for
+variables, constants, and functions. Your code should also be well structured (i.e. not all
+in the main function).
+
+Please remember to test your program as well, since marks will obviously be given for
+correctness! You should transfer different HTML documents, as well as images or other
+binary files with your load balancer in front of a number of server instances. You can
+
+then use diff to compare the original files and the downloaded files to ensure the
+correct operation of your client, server, and load balancer.
+Purpose of the Assignment
+
+The general purpose of this assignment is to continue to explore network programming
+and more advanced concepts by building a simplified web load balancer, leveraging the
+web client and server constructed for Assignment #2 and used again in Assignment
+
+#3. This assignment is designed to give you further experience in:
+
+e writing networked applications
+
+e the socket API in Python
+
+e writing software supporting an Internet protocol
+e techniques for managing network performance
+
+Assigned
+
+Wednesday, November 11, 2020 (please check the main course website regularly for
+any updates or revisions)
+
+Due
+
+The assignment is due Wednesday, December 9th, 2020 by 11:55pm (midnight-ish)
+through an electronic submission through the OWL site. If you require assistance, help is
+available online through OWL.
+
+Late Penalty
+
+Late assignments will be accepted for up to two days after the due date, with weekends
+counting as a single day; the late penalty is 20% of the available marks per day.
+Lateness is based on the time the assignment is submitted.
+
+Individual Effort
+
+Your assignment is expected to be an individual effort. Feel free to discuss ideas with
+others in the class; however, your assignment submission must be your own work. If it is
+determined that you are guilty of cheating on the assignment, you could receive a grade
+of zero with a notice of this offence submitted to the Dean of your home faculty for
+inclusion in your academic record.
+
+What to Hand in
+
+Your assignment submission, as noted above, will be electronically through OWL. You
+are to submit all Python files required for your assignment. If any special instructions
+are required to run your submission, be sure to include a README file documenting
+details. (Keep in mind that if the TA cannot run your assignment, it becomes much
+harder to assign it a grade.)
+
+Assignment Task
+
+You are required to implement in Python a stripped down and simplified web load
+balancer, leveraging the web server and web downloader client you implemented as part
+of Assignment #2 and reused in Assignment #3. Note that you will not need to use your
+web cache from Assignment #3 here, though it should theoretically still work with all of
+this. You can use your own work from Assignment #2 or #3 as a foundation here, or the
+provided sample Assignment #2 solution.
+
+A load balancer can be complex, but we will be making a pretty straightforward
+
+one. Usually, these things work with DNS and other systems to spread incoming
+requests across a pool of servers, but in our case we will be doing this entirely with HTTP
+redirection. (Again, this isn't necessarily the best way of doing things, but itis at least A
+way of doing things using the tools and previous work at our disposal!) In a nutshell,
+your load balancer will sit between your web client and multiple instances of your web
+server. When your client submits a request, it will be sending its request to the load
+balancer, thinking it is the one and only source of the files it is looking for. The load
+balancer will have a list of the actual servers hosting the content, will select a server from
+the list, and respond to the client with a redirection response to inform the client to
+retrieve the file from the given server. On receiving this, the client will connect with the
+designated server and retrieve its file. Periodically, the load balancer will check each
+server to get a measure of their responsiveness and performance, and use this
+information to influence its selection process, directing more client requests to the better
+performing server instances. (In theory, this would be partially influenced by client and
+server location, but this approach should still do the job for us!)
+
+Some Particulars
+
+Here are some specific requirements and other important notes:
+
+e Your web load balancer will be built using elements from the Assignment #2
+client and server programs (or their extended versions from Assignment
+#3). The load balancer primarily needs to act like a web server to clients, but to
+check performance will need to make simple HTTP requests to servers as a web
+client. So, the load balancer will need elements of both the client and server to
+function.
+
+e When launched, the load balancer will be given a list of servers with host and port
+number combinations (in the form of host:port). This can be either provided as
+command line parameters to the load balancer or through a configuration
+file. The list of servers cannot be hardcoded into the load balancer, and your
+balancer should not require a hard coded number of servers either. The listed
+servers should all be running before the load balancer is run. Each server
+should have access to copies of the same files. (In theory, you could just run
+each server from the same directory so they are all serving the same files on your
+file system, or you could replicate the directory structure on your computer and
+run each server from a different replica.)
+
+e Before the load balancer starts accepting traffic from clients, it needs to do a
+performance test on the servers. For this, it will make a simple transfer request
+from each server and time how long it takes to complete each request. The
+transfer could be pretty much anything, so you can create a file of your choosing
+called test’, "test.html", "test.jog" or whatever ... just something that will take
+some time to process. You can use the various methods of the datetime module
+to assist with timing how long it takes from initiating the transfer to when the
+transfer is complete. (Note that if the file is super small, it might be difficult to
+measure how long it takes to transfer on systems with poor timer resolution in
+Python ... here's looking at you, Windows! In such cases, timestamps taken
+before and after the transfer could be identical, with it looking like the transfer
+took no time. You might have to adjust file sizes accordingly if you want to avoid
+this issue. Running at least one server remotely, say on
+cs3357.gaul.csd.uwo.ca should provide some variety in timings at least.)
+
+After running the performance test, your load balancer can rank the servers it
+knows about in terms of their transfer times. The load balancer should use this
+information to direct more clients to the faster servers. How exactly? Well,
+that's up to you. Asimple approach would be to sort the list of servers by speed
+from slowest to fastest. The position in the list indicates the relative share of
+client requests that the server should receive. For example, let's say you have
+three servers A, B, and C with A the slowest, C the fastest, and B somewhere in
+the middle. The load balancer's server list would then be: Ain position 1, Bin
+position 2, and C in position 3 giving a request ratio of 1:2:3. For every request
+the slowest system (A) gets, the fastest system (B) should get three. (And the
+middle system B should get two.) How do you make that happen? Well, if you
+add up these numbers (1, 2, and 3) you have a total of 6. Now, pick a random
+number between 1 and6. Server A (in position 1 of the server list) should only
+get a request if 1 is picked. Server B (in position 2) should get a request if a 2 or
+a3is picked. Server C (in position 3) should get a request ifa4, 5, ora6is
+picked. (So, in other words, the position in the list determines how many
+numbers picked at random would head its way.) This will help maintain the
+proper distribution of requests to servers based on their performance. Again it's
+up to you; as long as you have a means so that every server could get a request
+sent its way and faster servers get more requests on average than slower
+servers, you're good.
+
+Okay. So, now the load balancer has a list of servers and it know how to select
+them to prioritize redirection of client requests to faster servers. The load
+balancer can now start accepting client requests.
+
+When a client issues a request, to use the load balancer, you will specify the
+address of the load balancer in the URL parameter provided to the client. Again,
+to the client, the load balancer is the definitive source of the files it is looking for
+and not the servers. (You could still directly request from a server, but you
+should be always going through the load balancer in this case.). Suppose you
+were looking for a file called foo. html from your server, and had server
+instances running and listening at localhost:11111, localhost: 22222,
+
+and localhost :33333. Also suppose you had your load balancer running and
+listening at localhost :12345. When running your client, you would specify the
+URL to retrieve as http: //localhost :12345/foo. html, making this request
+go to the load balancer. The load balancer would be configured to Know about
+your server instances and would redirect the client accordingly.
+
+When the load balancer receives a request from the client, it will select a target
+server from its server list as discussed above. The load balancer will redirect the
+client to this server by returning a 301 Moved Permanently response to the
+client with a Location: header line specifying the selected target server to
+retrieve the file from. Continuing the above example, if the load balancer chose
+to redirect the client to localhost:11111, it would send along a header line
+ofLocation: http://localhost:11111/foo. html. The load balancer
+will also return a message body containing appropriate HTML, much like how 404
+and other messages are handled by the server. For more information on
+redirections, please see this link.
+
+You will need to modify your client so that when it receives a 301 Moved
+Permanently response to a request, it prints out the message as usual, but
+instead of exiting, it immediately initiates another request to retrieve the file from
+the URL given in the Location: header. It will then download the file and/or
+report errors encountered normally from there. In doing this, the load balancer
+has effectively directed the client to one of your server instances to retrieve the
+file automatically.
+
+What happens if server performance changes over time? The load balancer will
+need to accommodate that and will need to periodically re-run the same
+performance test that it ran on initialization to update its view on which servers
+should be getting more client traffic and which should be getting less. Redoing
+the performance test itself is straightforward enough, but how will the load
+balancer do so if it is constantly waiting for new client requests? One of the
+easiest ways to do this is by setting up a timeout in the load balancer before
+accepting connections on its socket. In such a case, you could define a timeout
+value in a constant in the load balancer, say 5 minutes. After 5 minutes of
+waiting with no client requests, the timeout fires and the load balancer knows to
+run another performance test. When the performance test is complete, it goes
+back to wait for client connections. If none come in before another 5 minutes, it
+times out again and goes and checks on the servers (again). This will make sure
+that the load balancer's view of the servers is pretty up-to-date all the time. (You
+can also use threads to accomplish this, or a number of other mechanisms ... it is
+up to you!)
+
+What happens if one of the server instances is down or unavailable when the
+load balancer checks in on it? In such a case, the load balancer will remove the
+server from its list and stop checking in on it. No clients will be redirected to the
+server from here on. (You'd need to restart the load balancer with a fresh
+configuration to add new server instances.)
+
+If you need additional hosts for multiple servers, you can use
+compute.gaul.csd.uwo.ca and/or cs3357.gaul.csd. uwo.ca as necessary.
+You are to provide all of the Python code for this assignment yourself, except for code
+used from the Assignment #2 implementation provided to you. (You can also reuse your
+own Assignment 32 or #3 code as well.). You are not allowed to use Python functions to
+execute other programs for you, nor are you allowed to use any libraries that provide
+HTTP request handling for you. (If there is a particular library you would like to
+use/import, you must check first.) All server code files must begin with server, all client
+files must begin with client, and all load balancer files must begin with balancer. All of
+these files must be submitted with your assignment.
+
+As an important note, marks will be allocated for code style. This includes appropriate
+use of comments and indentation for readability, plus good naming conventions for
+variables, constants, and functions. Your code should also be well structured (i.e. not all
+in the main function).
+
+Please remember to test your program as well, since marks will obviously be given for
+correctness! You should transfer different HTML documents, as well as images or other
+binary files with your load balancer in front of a number of server instances. You can
+
+then use diff to compare the original files and the downloaded files to ensure the
+correct operation of your client, server, and load balancer.
+Purpose of the Assignment
+
+The general purpose of this assignment is to continue to explore network programming
+and more advanced concepts by building a simplified web load balancer, leveraging the
+web client and server constructed for Assignment #2 and used again in Assignment
+
+#3. This assignment is designed to give you further experience in:
+
+e writing networked applications
+
+e the socket API in Python
+
+e writing software supporting an Internet protocol
+e techniques for managing network performance
+
+Assigned
+
+Wednesday, November 11, 2020 (please check the main course website regularly for
+any updates or revisions)
+
+Due
+
+The assignment is due Wednesday, December 9th, 2020 by 11:55pm (midnight-ish)
+through an electronic submission through the OWL site. If you require assistance, help is
+available online through OWL.
+
+Late Penalty
+
+Late assignments will be accepted for up to two days after the due date, with weekends
+counting as a single day; the late penalty is 20% of the available marks per day.
+Lateness is based on the time the assignment is submitted.
+
+Individual Effort
+
+Your assignment is expected to be an individual effort. Feel free to discuss ideas with
+others in the class; however, your assignment submission must be your own work. If it is
+determined that you are guilty of cheating on the assignment, you could receive a grade
+of zero with a notice of this offence submitted to the Dean of your home faculty for
+inclusion in your academic record.
+
+What to Hand in
+
+Your assignment submission, as noted above, will be electronically through OWL. You
+are to submit all Python files required for your assignment. If any special instructions
+are required to run your submission, be sure to include a README file documenting
+details. (Keep in mind that if the TA cannot run your assignment, it becomes much
+harder to assign it a grade.)
+
+Assignment Task
+
+You are required to implement in Python a stripped down and simplified web load
+balancer, leveraging the web server and web downloader client you implemented as part
+of Assignment #2 and reused in Assignment #3. Note that you will not need to use your
+web cache from Assignment #3 here, though it should theoretically still work with all of
+this. You can use your own work from Assignment #2 or #3 as a foundation here, or the
+provided sample Assignment #2 solution.
+
+A load balancer can be complex, but we will be making a pretty straightforward
+
+one. Usually, these things work with DNS and other systems to spread incoming
+requests across a pool of servers, but in our case we will be doing this entirely with HTTP
+redirection. (Again, this isn't necessarily the best way of doing things, but itis at least A
+way of doing things using the tools and previous work at our disposal!) In a nutshell,
+your load balancer will sit between your web client and multiple instances of your web
+server. When your client submits a request, it will be sending its request to the load
+balancer, thinking it is the one and only source of the files it is looking for. The load
+balancer will have a list of the actual servers hosting the content, will select a server from
+the list, and respond to the client with a redirection response to inform the client to
+retrieve the file from the given server. On receiving this, the client will connect with the
+designated server and retrieve its file. Periodically, the load balancer will check each
+server to get a measure of their responsiveness and performance, and use this
+information to influence its selection process, directing more client requests to the better
+performing server instances. (In theory, this would be partially influenced by client and
+server location, but this approach should still do the job for us!)
+
+Some Particulars
+
+Here are some specific requirements and other important notes:
+
+e Your web load balancer will be built using elements from the Assignment #2
+client and server programs (or their extended versions from Assignment
+#3). The load balancer primarily needs to act like a web server to clients, but to
+check performance will need to make simple HTTP requests to servers as a web
+client. So, the load balancer will need elements of both the client and server to
+function.
+
+e When launched, the load balancer will be given a list of servers with host and port
+number combinations (in the form of host:port). This can be either provided as
+command line parameters to the load balancer or through a configuration
+file. The list of servers cannot be hardcoded into the load balancer, and your
+balancer should not require a hard coded number of servers either. The listed
+servers should all be running before the load balancer is run. Each server
+should have access to copies of the same files. (In theory, you could just run
+each server from the same directory so they are all serving the same files on your
+file system, or you could replicate the directory structure on your computer and
+run each server from a different replica.)
+
+e Before the load balancer starts accepting traffic from clients, it needs to do a
+performance test on the servers. For this, it will make a simple transfer request
+from each server and time how long it takes to complete each request. The
+transfer could be pretty much anything, so you can create a file of your choosing
+called test’, "test.html", "test.jog" or whatever ... just something that will take
+some time to process. You can use the various methods of the datetime module
+to assist with timing how long it takes from initiating the transfer to when the
+transfer is complete. (Note that if the file is super small, it might be difficult to
+measure how long it takes to transfer on systems with poor timer resolution in
+Python ... here's looking at you, Windows! In such cases, timestamps taken
+before and after the transfer could be identical, with it looking like the transfer
+took no time. You might have to adjust file sizes accordingly if you want to avoid
+this issue. Running at least one server remotely, say on
+cs3357.gaul.csd.uwo.ca should provide some variety in timings at least.)
+
+After running the performance test, your load balancer can rank the servers it
+knows about in terms of their transfer times. The load balancer should use this
+information to direct more clients to the faster servers. How exactly? Well,
+that's up to you. Asimple approach would be to sort the list of servers by speed
+from slowest to fastest. The position in the list indicates the relative share of
+client requests that the server should receive. For example, let's say you have
+three servers A, B, and C with A the slowest, C the fastest, and B somewhere in
+the middle. The load balancer's server list would then be: Ain position 1, Bin
+position 2, and C in position 3 giving a request ratio of 1:2:3. For every request
+the slowest system (A) gets, the fastest system (B) should get three. (And the
+middle system B should get two.) How do you make that happen? Well, if you
+add up these numbers (1, 2, and 3) you have a total of 6. Now, pick a random
+number between 1 and6. Server A (in position 1 of the server list) should only
+get a request if 1 is picked. Server B (in position 2) should get a request if a 2 or
+a3is picked. Server C (in position 3) should get a request ifa4, 5, ora6is
+picked. (So, in other words, the position in the list determines how many
+numbers picked at random would head its way.) This will help maintain the
+proper distribution of requests to servers based on their performance. Again it's
+up to you; as long as you have a means so that every server could get a request
+sent its way and faster servers get more requests on average than slower
+servers, you're good.
+
+Okay. So, now the load balancer has a list of servers and it know how to select
+them to prioritize redirection of client requests to faster servers. The load
+balancer can now start accepting client requests.
+
+When a client issues a request, to use the load balancer, you will specify the
+address of the load balancer in the URL parameter provided to the client. Again,
+to the client, the load balancer is the definitive source of the files it is looking for
+and not the servers. (You could still directly request from a server, but you
+should be always going through the load balancer in this case.). Suppose you
+were looking for a file called foo. html from your server, and had server
+instances running and listening at localhost:11111, localhost: 22222,
+
+and localhost :33333. Also suppose you had your load balancer running and
+listening at localhost :12345. When running your client, you would specify the
+URL to retrieve as http: //localhost :12345/foo. html, making this request
+go to the load balancer. The load balancer would be configured to Know about
+your server instances and would redirect the client accordingly.
+
+When the load balancer receives a request from the client, it will select a target
+server from its server list as discussed above. The load balancer will redirect the
+client to this server by returning a 301 Moved Permanently response to the
+client with a Location: header line specifying the selected target server to
+retrieve the file from. Continuing the above example, if the load balancer chose
+to redirect the client to localhost:11111, it would send along a header line
+ofLocation: http://localhost:11111/foo. html. The load balancer
+will also return a message body containing appropriate HTML, much like how 404
+and other messages are handled by the server. For more information on
+redirections, please see this link.
+
+You will need to modify your client so that when it receives a 301 Moved
+Permanently response to a request, it prints out the message as usual, but
+instead of exiting, it immediately initiates another request to retrieve the file from
+the URL given in the Location: header. It will then download the file and/or
+report errors encountered normally from there. In doing this, the load balancer
+has effectively directed the client to one of your server instances to retrieve the
+file automatically.
+
+What happens if server performance changes over time? The load balancer will
+need to accommodate that and will need to periodically re-run the same
+performance test that it ran on initialization to update its view on which servers
+should be getting more client traffic and which should be getting less. Redoing
+the performance test itself is straightforward enough, but how will the load
+balancer do so if it is constantly waiting for new client requests? One of the
+easiest ways to do this is by setting up a timeout in the load balancer before
+accepting connections on its socket. In such a case, you could define a timeout
+value in a constant in the load balancer, say 5 minutes. After 5 minutes of
+waiting with no client requests, the timeout fires and the load balancer knows to
+run another performance test. When the performance test is complete, it goes
+back to wait for client connections. If none come in before another 5 minutes, it
+times out again and goes and checks on the servers (again). This will make sure
+that the load balancer's view of the servers is pretty up-to-date all the time. (You
+can also use threads to accomplish this, or a number of other mechanisms ... it is
+up to you!)
+
+What happens if one of the server instances is down or unavailable when the
+load balancer checks in on it? In such a case, the load balancer will remove the
+server from its list and stop checking in on it. No clients will be redirected to the
+server from here on. (You'd need to restart the load balancer with a fresh
+configuration to add new server instances.)
+
+If you need additional hosts for multiple servers, you can use
+compute.gaul.csd.uwo.ca and/or cs3357.gaul.csd. uwo.ca as necessary.
+You are to provide all of the Python code for this assignment yourself, except for code
+used from the Assignment #2 implementation provided to you. (You can also reuse your
+own Assignment 32 or #3 code as well.). You are not allowed to use Python functions to
+execute other programs for you, nor are you allowed to use any libraries that provide
+HTTP request handling for you. (If there is a particular library you would like to
+use/import, you must check first.) All server code files must begin with server, all client
+files must begin with client, and all load balancer files must begin with balancer. All of
+these files must be submitted with your assignment.
+
+As an important note, marks will be allocated for code style. This includes appropriate
+use of comments and indentation for readability, plus good naming conventions for
+variables, constants, and functions. Your code should also be well structured (i.e. not all
+in the main function).
+
+Please remember to test your program as well, since marks will obviously be given for
+correctness! You should transfer different HTML documents, as well as images or other
+binary files with your load balancer in front of a number of server instances. You can
+
+then use diff to compare the original files and the downloaded files to ensure the
+correct operation of your client, server, and load balancer.
+Purpose of the Assignment
+
+The general purpose of this assignment is to continue to explore network programming
+and more advanced concepts by building a simplified web load balancer, leveraging the
+web client and server constructed for Assignment #2 and used again in Assignment
+
+#3. This assignment is designed to give you further experience in:
+
+e writing networked applications
+
+e the socket API in Python
+
+e writing software supporting an Internet protocol
+e techniques for managing network performance
+
+Assigned
+
+Wednesday, November 11, 2020 (please check the main course website regularly for
+any updates or revisions)
+
+Due
+
+The assignment is due Wednesday, December 9th, 2020 by 11:55pm (midnight-ish)
+through an electronic submission through the OWL site. If you require assistance, help is
+available online through OWL.
+
+Late Penalty
+
+Late assignments will be accepted for up to two days after the due date, with weekends
+counting as a single day; the late penalty is 20% of the available marks per day.
+Lateness is based on the time the assignment is submitted.
+
+Individual Effort
+
+Your assignment is expected to be an individual effort. Feel free to discuss ideas with
+others in the class; however, your assignment submission must be your own work. If it is
+determined that you are guilty of cheating on the assignment, you could receive a grade
+of zero with a notice of this offence submitted to the Dean of your home faculty for
+inclusion in your academic record.
+
+What to Hand in
+
+Your assignment submission, as noted above, will be electronically through OWL. You
+are to submit all Python files required for your assignment. If any special instructions
+are required to run your submission, be sure to include a README file documenting
+details. (Keep in mind that if the TA cannot run your assignment, it becomes much
+harder to assign it a grade.)
+
+Assignment Task
+
+You are required to implement in Python a stripped down and simplified web load
+balancer, leveraging the web server and web downloader client you implemented as part
+of Assignment #2 and reused in Assignment #3. Note that you will not need to use your
+web cache from Assignment #3 here, though it should theoretically still work with all of
+this. You can use your own work from Assignment #2 or #3 as a foundation here, or the
+provided sample Assignment #2 solution.
+
+A load balancer can be complex, but we will be making a pretty straightforward
+
+one. Usually, these things work with DNS and other systems to spread incoming
+requests across a pool of servers, but in our case we will be doing this entirely with HTTP
+redirection. (Again, this isn't necessarily the best way of doing things, but itis at least A
+way of doing things using the tools and previous work at our disposal!) In a nutshell,
+your load balancer will sit between your web client and multiple instances of your web
+server. When your client submits a request, it will be sending its request to the load
+balancer, thinking it is the one and only source of the files it is looking for. The load
+balancer will have a list of the actual servers hosting the content, will select a server from
+the list, and respond to the client with a redirection response to inform the client to
+retrieve the file from the given server. On receiving this, the client will connect with the
+designated server and retrieve its file. Periodically, the load balancer will check each
+server to get a measure of their responsiveness and performance, and use this
+information to influence its selection process, directing more client requests to the better
+performing server instances. (In theory, this would be partially influenced by client and
+server location, but this approach should still do the job for us!)
+
+Some Particulars
+
+Here are some specific requirements and other important notes:
+
+e Your web load balancer will be built using elements from the Assignment #2
+client and server programs (or their extended versions from Assignment
+#3). The load balancer primarily needs to act like a web server to clients, but to
+check performance will need to make simple HTTP requests to servers as a web
+client. So, the load balancer will need elements of both the client and server to
+function.
+
+e When launched, the load balancer will be given a list of servers with host and port
+number combinations (in the form of host:port). This can be either provided as
+command line parameters to the load balancer or through a configuration
+file. The list of servers cannot be hardcoded into the load balancer, and your
+balancer should not require a hard coded number of servers either. The listed
+servers should all be running before the load balancer is run. Each server
+should have access to copies of the same files. (In theory, you could just run
+each server from the same directory so they are all serving the same files on your
+file system, or you could replicate the directory structure on your computer and
+run each server from a different replica.)
+
+e Before the load balancer starts accepting traffic from clients, it needs to do a
+performance test on the servers. For this, it will make a simple transfer request
+from each server and time how long it takes to complete each request. The
+transfer could be pretty much anything, so you can create a file of your choosing
+called test’, "test.html", "test.jog" or whatever ... just something that will take
+some time to process. You can use the various methods of the datetime module
+to assist with timing how long it takes from initiating the transfer to when the
+transfer is complete. (Note that if the file is super small, it might be difficult to
+measure how long it takes to transfer on systems with poor timer resolution in
+Python ... here's looking at you, Windows! In such cases, timestamps taken
+before and after the transfer could be identical, with it looking like the transfer
+took no time. You might have to adjust file sizes accordingly if you want to avoid
+this issue. Running at least one server remotely, say on
+cs3357.gaul.csd.uwo.ca should provide some variety in timings at least.)
+
+After running the performance test, your load balancer can rank the servers it
+knows about in terms of their transfer times. The load balancer should use this
+information to direct more clients to the faster servers. How exactly? Well,
+that's up to you. Asimple approach would be to sort the list of servers by speed
+from slowest to fastest. The position in the list indicates the relative share of
+client requests that the server should receive. For example, let's say you have
+three servers A, B, and C with A the slowest, C the fastest, and B somewhere in
+the middle. The load balancer's server list would then be: Ain position 1, Bin
+position 2, and C in position 3 giving a request ratio of 1:2:3. For every request
+the slowest system (A) gets, the fastest system (B) should get three. (And the
+middle system B should get two.) How do you make that happen? Well, if you
+add up these numbers (1, 2, and 3) you have a total of 6. Now, pick a random
+number between 1 and6. Server A (in position 1 of the server list) should only
+get a request if 1 is picked. Server B (in position 2) should get a request if a 2 or
+a3is picked. Server C (in position 3) should get a request ifa4, 5, ora6is
+picked. (So, in other words, the position in the list determines how many
+numbers picked at random would head its way.) This will help maintain the
+proper distribution of requests to servers based on their performance. Again it's
+up to you; as long as you have a means so that every server could get a request
+sent its way and faster servers get more requests on average than slower
+servers, you're good.
+
+Okay. So, now the load balancer has a list of servers and it know how to select
+them to prioritize redirection of client requests to faster servers. The load
+balancer can now start accepting client requests.
+
+When a client issues a request, to use the load balancer, you will specify the
+address of the load balancer in the URL parameter provided to the client. Again,
+to the client, the load balancer is the definitive source of the files it is looking for
+and not the servers. (You could still directly request from a server, but you
+should be always going through the load balancer in this case.). Suppose you
+were looking for a file called foo. html from your server, and had server
+instances running and listening at localhost:11111, localhost: 22222,
+
+and localhost :33333. Also suppose you had your load balancer running and
+listening at localhost :12345. When running your client, you would specify the
+URL to retrieve as http: //localhost :12345/foo. html, making this request
+go to the load balancer. The load balancer would be configured to Know about
+your server instances and would redirect the client accordingly.
+
+When the load balancer receives a request from the client, it will select a target
+server from its server list as discussed above. The load balancer will redirect the
+client to this server by returning a 301 Moved Permanently response to the
+client with a Location: header line specifying the selected target server to
+retrieve the file from. Continuing the above example, if the load balancer chose
+to redirect the client to localhost:11111, it would send along a header line
+ofLocation: http://localhost:11111/foo. html. The load balancer
+will also return a message body containing appropriate HTML, much like how 404
+and other messages are handled by the server. For more information on
+redirections, please see this link.
+
+You will need to modify your client so that when it receives a 301 Moved
+Permanently response to a request, it prints out the message as usual, but
+instead of exiting, it immediately initiates another request to retrieve the file from
+the URL given in the Location: header. It will then download the file and/or
+report errors encountered normally from there. In doing this, the load balancer
+has effectively directed the client to one of your server instances to retrieve the
+file automatically.
+
+What happens if server performance changes over time? The load balancer will
+need to accommodate that and will need to periodically re-run the same
+performance test that it ran on initialization to update its view on which servers
+should be getting more client traffic and which should be getting less. Redoing
+the performance test itself is straightforward enough, but how will the load
+balancer do so if it is constantly waiting for new client requests? One of the
+easiest ways to do this is by setting up a timeout in the load balancer before
+accepting connections on its socket. In such a case, you could define a timeout
+value in a constant in the load balancer, say 5 minutes. After 5 minutes of
+waiting with no client requests, the timeout fires and the load balancer knows to
+run another performance test. When the performance test is complete, it goes
+back to wait for client connections. If none come in before another 5 minutes, it
+times out again and goes and checks on the servers (again). This will make sure
+that the load balancer's view of the servers is pretty up-to-date all the time. (You
+can also use threads to accomplish this, or a number of other mechanisms ... it is
+up to you!)
+
+What happens if one of the server instances is down or unavailable when the
+load balancer checks in on it? In such a case, the load balancer will remove the
+server from its list and stop checking in on it. No clients will be redirected to the
+server from here on. (You'd need to restart the load balancer with a fresh
+configuration to add new server instances.)
+
+If you need additional hosts for multiple servers, you can use
+compute.gaul.csd.uwo.ca and/or cs3357.gaul.csd. uwo.ca as necessary.
+You are to provide all of the Python code for this assignment yourself, except for code
+used from the Assignment #2 implementation provided to you. (You can also reuse your
+own Assignment 32 or #3 code as well.). You are not allowed to use Python functions to
+execute other programs for you, nor are you allowed to use any libraries that provide
+HTTP request handling for you. (If there is a particular library you would like to
+use/import, you must check first.) All server code files must begin with server, all client
+files must begin with client, and all load balancer files must begin with balancer. All of
+these files must be submitted with your assignment.
+
+As an important note, marks will be allocated for code style. This includes appropriate
+use of comments and indentation for readability, plus good naming conventions for
+variables, constants, and functions. Your code should also be well structured (i.e. not all
+in the main function).
+
+Please remember to test your program as well, since marks will obviously be given for
+correctness! You should transfer different HTML documents, as well as images or other
+binary files with your load balancer in front of a number of server instances. You can
+
+then use diff to compare the original files and the downloaded files to ensure the
+correct operation of your client, server, and load balancer.
